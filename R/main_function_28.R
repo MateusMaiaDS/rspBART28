@@ -847,9 +847,10 @@ rspBART <- function(x_train,
 
 
     # Getting the object for the main effects
-    list_plot <- intercept_main_effects(forest = forest,
-                                        data = data)
-
+    if(main_effects_pred | varimportance_bool){
+      list_plot <- intercept_main_effects(forest = forest,
+                                          data = data)
+    }
     # Getting the main effect pred for each plot
     if(main_effects_pred){
       for(ii in 1:length(main_effects_train_list)){

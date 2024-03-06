@@ -5,10 +5,10 @@ library(mlbench)
 library(purrr)
 library(MOTRbart)
 library(doParallel)
-source("/users/research/mmarques/spline_bart_lab/rspBART26/R/sim_functions_26.R")
-source("/users/research/mmarques/spline_bart_lab/rspBART26/R/main_function_26.R")
+source("/users/research/mmarques/spline_bart_lab/rspBART28/R/sim_functions_28.R")
+source("/users/research/mmarques/spline_bart_lab/rspBART28/R/main_function_28.R")
 set.seed(42)
-competitors_only <- TRUE
+competitors_only <- FALSE
 
 
 n_ <- 1000
@@ -26,7 +26,7 @@ alpha_ <- 0.5
 stump_ <- FALSE
 scale_init_ <- FALSE
 update_tau_beta_ <- TRUE
-node_min_size_ <- 50
+node_min_size_ <- 25
 n_mcmc_ <- 5000
 n_burn_ <- 3000
 pen_basis_ <- TRUE
@@ -127,13 +127,13 @@ doParallel::registerDoParallel(cl)
 # Testing the simple n_tree
 result <- foreach(i = 1:n_rep_, .packages = c("dbarts","SoftBart","MOTRbart","dplyr")) %dopar%{
 
-  devtools::load_all("/users/research/mmarques/spline_bart_lab/rspBART26/")
-  source("/users/research/mmarques/spline_bart_lab/rspBART26/R/sim_functions_26.R")
-  source("/users/research/mmarques/spline_bart_lab/rspBART26/R/main_function_26.R")
-  source("/users/research/mmarques/spline_bart_lab/rspBART26/R/cv_functions.R")
+  devtools::load_all("/users/research/mmarques/spline_bart_lab/rspBART28/")
+  source("/users/research/mmarques/spline_bart_lab/rspBART28/R/sim_functions_28.R")
+  source("/users/research/mmarques/spline_bart_lab/rspBART28/R/main_function_28.R")
+  source("/users/research/mmarques/spline_bart_lab/rspBART28/R/cv_functions_28.R")
 
   if(isFALSE(competitors_only)){
-    aux <- all_spbart_lite_interaction(cv_element = cv_[[i]],
+    aux <- all_spbart_lite_interaction_28(cv_element = cv_[[i]],
                          nIknots_ = nIknots_,ntree_ = ntree_,
                          node_min_size_ = node_min_size_,
                          seed_ = seed_,
@@ -160,10 +160,10 @@ stopCluster(cl)
 
 # Saving the plots
 if(competitors_only){
-  saveRDS(object = result,file = paste0("/users/research/mmarques/spline_bart_lab/preliminar_results/rspBART26/",type_,"/competitors_n_",n_,
+  saveRDS(object = result,file = paste0("/users/research/mmarques/spline_bart_lab/preliminar_results/rspBART28/",type_,"/competitors_n_",n_,
                                         "_sd_",sd_,".Rds"))
 } else {
-  saveRDS(object = result,file = paste0("/users/research/mmarques/spline_bart_lab/preliminar_results/rspBART26/",type_,"/v31_intercept_psBART_n_",n_,
+  saveRDS(object = result,file = paste0("/users/research/mmarques/spline_bart_lab/preliminar_results/rspBART28/",type_,"/v31_intercept_psBART_n_",n_,
                                         "_sd_",sd_,"_nIknots_",nIknots_,"_ntree_",ntree_,
                                         "_alpha_",alpha_,"_dif_",dif_order_,"_nmin_",node_min_size_,
                                         "_nmcmc_",n_mcmc_,"_nburn_",n_burn_,".Rds"))
