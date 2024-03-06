@@ -879,6 +879,10 @@ change_stump <- function(tree,
     c_node <- tree$node0
   }
 
+  # In case of no predictors vars there's nothing to be changed
+  if(length(c_node$pred_vars)==0){
+    return(tree)
+  }
   # Sampling a terminal node
 
   # Selecting if change the master_variable or the interaction as well
