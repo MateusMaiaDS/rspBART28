@@ -23,8 +23,8 @@ n_rep_ <- 10
 # (1): "oned_break" one dimensionnal sin(2*x) with a break
 # (2): "friedman_nointer_nonoise": four-dimensional friedmna setting with no interaction terms and no extra X noise variables
 # (3): "interaction
-# type_ <- c("friedman_break")
-type_ <- c("friedman")
+type_ <- c("friedman_break")
+# type_ <- c("friedman")
 # type_ <- "smooth.main.formula"
 # type_ <- "non.smooth.main.formula"
 # type_ <- "non.and.smooth.main.formula"

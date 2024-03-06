@@ -1551,3 +1551,52 @@ update_tau <- function(y_train_hat,
 }
 
 
+# Getting intercept contributions based on the intercepts
+intercept_main_effects <- function(forest,
+                                   data){
+
+  # Create a matrix where each column correspond to each basis
+  intercept_effect_train <- matrix(0, nrow =  nrow(data$x_train), ncol = length(data$basis_subindex))
+  intercept_effect_test <- matrix(0, nrow =  nrow(data$x_train), ncol = length(data$basis_subindex))
+  tree_important_prop <- matrix(0, nrow = data$n_tree, ncol = length(data$basis_subindex))
+  colnames(tree_important_prop) <- colnames(intercept_effect_train) <- colnames(intercept_effect_test) <- names(data$basis_subindex)
+  t_nodes_count <- 0
+
+  # Creating the main effect contribution matrix
+  for(tree_number in 1:length(forest)){ # Iterating over all the trees
+
+    curr_tree <- forest[[tree_number]]
+
+    # Getting the terminals from the following tree
+    t_nodes <- get_terminals(tree = curr_tree)
+
+    # Iterating over all terminal nodes
+    for(t_n_i in 1:length(t_nodes)){
+      current_ancestors_unique <- sort(unique(curr_tree[[t_nodes[t_n_i]]]$ancestors))
+
+      if(length(current_ancestors_unique)==1){
+        intercept_effect_train[curr_tree[[t_nodes[t_n_i]]]$train_index,as.character(current_ancestors_unique)] <- intercept_effect_train[curr_tree[[t_nodes[t_n_i]]]$train_index,as.character(current_ancestors_unique)] +curr_tree[[t_nodes[t_n_i]]]$gamma
+        intercept_effect_test[curr_tree[[t_nodes[t_n_i]]]$test_index,as.character(current_ancestors_unique)] <- intercept_effect_test[curr_tree[[t_nodes[t_n_i]]]$test_index,as.character(current_ancestors_unique)] +curr_tree[[t_nodes[t_n_i]]]$gamma
+        tree_important_prop[tree_number,as.character(current_ancestors_unique)] <- tree_important_prop[tree_number,as.character(current_ancestors_unique)] + 1
+        t_nodes_count <- t_nodes_count + 1
+      } else if (length(current_ancestors_unique)==2){
+        current_ancestors_unique_int <- paste0(current_ancestors_unique,collapse = "")
+        intercept_effect_train[curr_tree[[t_nodes[t_n_i]]]$train_index,as.character(current_ancestors_unique_int)] <- intercept_effect_train[curr_tree[[t_nodes[t_n_i]]]$train_index,as.character(current_ancestors_unique_int)]+curr_tree[[t_nodes[t_n_i]]]$gamma
+        intercept_effect_test[curr_tree[[t_nodes[t_n_i]]]$test_index,as.character(current_ancestors_unique_int)] <- intercept_effect_test[curr_tree[[t_nodes[t_n_i]]]$test_index,as.character(current_ancestors_unique_int)]+curr_tree[[t_nodes[t_n_i]]]$gamma
+        tree_important_prop[tree_number,as.character(current_ancestors_unique_int)] <- tree_important_prop[tree_number,as.character(current_ancestors_unique_int)] + 1
+        t_nodes_count <- t_nodes_count + 1
+      }
+
+    }
+  }
+
+  # Taking the average from a type of split
+  var_importance_tree_split <- (colSums(tree_important_prop))/t_nodes_count
+
+  # Returning the list with each one of those effects
+  return(list(intercept_effect_train = intercept_effect_train,
+              intercept_effect_test = intercept_effect_test,
+              var_importance_tree_split = var_importance_tree_split))
+
+}
+

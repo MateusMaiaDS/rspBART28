@@ -414,6 +414,8 @@ rspBART <- function(x_train,
   all_y_hat_test <- matrix(NA, nrow = n_mcmc, ncol = nrow(x_test_scale))
   all_trees_fit <- vector("list",n_mcmc)
   all_trees <- vector("list",n_mcmc)
+  all_trees_depth <- matrix(NA, nrow = n_mcmc, ncol = n_tree)
+
   forest <- vector("list",n_tree)
 
   # Partial component pieces
@@ -696,6 +698,7 @@ rspBART <- function(x_train,
 
   # Setting a matrix to store the frequency that a variable appear within terminal nodes
   variable_importance_matrix <- matrix(0,nrow = n_mcmc, ncol = length(data$basis_subindex))
+  variable_importance_matrix_intercept <- matrix(0,nrow = n_mcmc, ncol = length(data$basis_subindex))
 
 
   for(i in 1:n_mcmc){
@@ -830,22 +833,34 @@ rspBART <- function(x_train,
 
       # Adding up the contribution for each tree with respect to the covariate (i)
       if(main_effects_pred){
+
+        # Getting the object for the main effects
         for(ii in 1:length(main_effects_train_list)){
-          main_effects_train_list[[ii]][i,] <- main_effects_train_list[[ii]][i,] + update_betas_aux$y_hat_train[,ii]# + update_gamma_aux$intercept_fit
-          main_effects_test_list[[ii]][i,] <- main_effects_test_list[[ii]][i,] + update_betas_aux$y_hat_test[,ii]# + update_gamma_aux$intercept_test
+          main_effects_train_list[[ii]][i,] <- main_effects_train_list[[ii]][i,] + update_betas_aux$y_hat_train[,ii] #+ list_plot$intercept_effect_train[,ii]
+          main_effects_test_list[[ii]][i,] <- main_effects_test_list[[ii]][i,] + update_betas_aux$y_hat_test[,ii]# + list_plot$intercept_effect_test[,ii]
         }
 
-        # Here I will add the intercept component
-        main_effects_train_list[[forest[[t]]$node0$master_var]][i,] <- main_effects_train_list[[forest[[t]]$node0$master_var]][i,] + update_gamma_aux$intercept_fit
-        main_effects_test_list[[forest[[t]]$node0$master_var]][i,] <- main_effects_test_list[[forest[[t]]$node0$master_var]][i,] + update_gamma_aux$intercept_test
 
       }
 
     }
 
 
+    # Getting the object for the main effects
+    list_plot <- intercept_main_effects(forest = forest,
+                                        data = data)
+
+    # Getting the main effect pred for each plot
+    if(main_effects_pred){
+      for(ii in 1:length(main_effects_train_list)){
+        main_effects_train_list[[ii]][i,] <- main_effects_train_list[[ii]][i,] +  list_plot$intercept_effect_train[,ii]
+        main_effects_test_list[[ii]][i,] <- main_effects_test_list[[ii]][i,] +  list_plot$intercept_effect_test[,ii]
+      }
+    }
+
     # Counting the number of times that a vriable was selected
     if(varimportance_bool){
+        variable_importance_matrix_intercept[i, ] <- list_plot$var_importance_tree_split
         variable_importance_matrix[i, ] <- varimportance(forest = forest,data = data)
     }
 
@@ -893,6 +908,7 @@ rspBART <- function(x_train,
     all_y_hat[i,] <- y_hat
     all_y_hat_test[i,] <- y_hat_test
     all_tau_beta[i,] <- data$tau_beta
+    all_trees_depth[i,] <- unlist(lapply(forest, length))
     # all_delta[i] <- data$delta
 
 
@@ -976,7 +992,7 @@ rspBART <- function(x_train,
 
         if(jj <= NCOL(data$x_train)){
             plot(x_train[,jj],colMeans(main_effects_train_list_norm[[jj]][n_burn_plot:i,, drop = FALSE]),main = paste0('X',jj),
-                 ylab = paste0('G(X',jj,')'), ylim = c(-10,10) ,pch=20,xlab = paste0('x.',jj), col = ggplot2::alpha("black",1.0))
+                 ylab = paste0('G(X',jj,')'), ylim = c(-25,25) ,pch=20,xlab = paste0('x.',jj), col = ggplot2::alpha("black",1.0))
         }    else if(jj == 11 ) {
             # plot(x_train[,1], colMeans(main_effects_train_list_norm[[jj]][1:i,,drop = FALSE]), ylab = "G(x.1,x2)", xlab = "X.1")
             # plot(x_train[,2], colMeans(main_effects_train_list_norm[[jj]][1:i,,drop = FALSE]), ylab = "G(x.1,x2)", xlab = "X.1")
@@ -1052,7 +1068,7 @@ rspBART <- function(x_train,
 
   # Plotting vaiable importance
   if(plot_preview){
-    par(mfrow=c(1,2))
+    par(mfrow=c(1,3))
     burn_sample_ <- 100
     plot(1:NCOL(variable_importance_matrix),variable_importance_matrix[burn_sample_:i,,drop = FALSE] %>% colMeans(),
          ylab = "Prop. pred_var", xlab = "Predictor", main = c("Proportion Tree pred.vars"))
@@ -1064,6 +1080,14 @@ rspBART <- function(x_train,
          ylab = expression(bar(tau[beta])), xlab = "Predictor", main = c("Tau_beta_posterior_mean"))
     points((1:NCOL(variable_importance_matrix))[c(1:5,11)],all_tau_beta[burn_sample_:i,c(1:5,11),drop = FALSE] %>% colMeans(na.rm = TRUE),
            ylab = "mean_tau_beta", xlab = "Predictor/Basis", pch = 20)
+
+    plot(1:NCOL(variable_importance_matrix_intercept),variable_importance_matrix_intercept[burn_sample_:i,,drop = FALSE] %>% colMeans(na.rm = TRUE),
+         ylab = expression(bar(tau[beta])), xlab = "Predictor", main = c("Variable Importance Tree"))
+    points((1:NCOL(variable_importance_matrix_intercept))[c(1:5,11)],variable_importance_matrix_intercept[burn_sample_:i,c(1:5,11),drop = FALSE] %>% colMeans(na.rm = TRUE),
+           ylab = "mean_tau_beta", xlab = "Predictor/Basis", pch = 20)
+
+
+
 
   }
   # importance_var_ <- variable_importance_matrix[501:i,,drop = FALSE] %>% colMeans()
@@ -1175,10 +1199,12 @@ rspBART <- function(x_train,
               mcmc = list(n_mcmc = n_mcmc,
                           n_burn = n_burn,
                           all_trees = all_trees,
+                          all_trees_depth = all_trees_depth,
                           main_effects_train = main_effects_train_list_norm,
                           main_effects_test = main_effects_test_list_norm,
                           tree_main_effects = tree_main_effects,
-                          variable_importance_matrix = variable_importance_matrix),
+                          variable_importance_matrix = variable_importance_matrix,
+                          variable_importance_matrix_intercept = variable_importance_matrix_intercept),
               data = list(x_train = x_train,
                           y_train = y_train,
                           B_train = B_train_obj,
